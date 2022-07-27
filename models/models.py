@@ -58,6 +58,13 @@ class Bonus(Base):
         self.type = type
         self.description = description
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'type': self.type,
+            'description': self.description
+        }
+
 
 class Request(Base):
     __tablename__ = "requests"
