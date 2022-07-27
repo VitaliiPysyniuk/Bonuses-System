@@ -19,6 +19,14 @@ class User(Base):
         self.position = position
         self.slack_id = slack_id
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'type': self.full_name,
+            'position': self.position,
+            'slack_id': self.slack_id
+        }
+
 
 class Roles(Base):
     __tablename__ = "roles"

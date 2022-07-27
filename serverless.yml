@@ -14,12 +14,47 @@ provider:
     POSTGRES_DB: ${env:POSTGRES_DB}
   ecr:
     images:
+      lambda-workers-image:
+        path: .
+        file: workers-lambda.Dockerfile
       lambda-bonuses-image:
         path: .
         file: bonuses-lambda.Dockerfile
 
 
 functions:
+  workers-lambda:
+    image:
+      name: lambda-workers-image
+    events:
+      - http:
+          path: workers
+          method: get
+      - http:
+          path: workers/{id}
+          method: get
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: workers
+          method: post
+      - http:
+          path: workers/{id}
+          method: patch
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: workers/{id}
+          method: delete
+          request:
+            parameters:
+              paths:
+                id: true
+
   bonuses-lambda:
     image:
       name: lambda-bonuses-image
