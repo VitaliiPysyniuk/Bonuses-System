@@ -47,6 +47,9 @@ def get_requests(event):
             elif int(query_params['type']) == 5:
                 requests = RequestQuery.get_administrator_all_requests(query_name=query_params['query_name'])
 
+            elif int(query_params['type']) == 6:
+                requests = RequestQuery.get_requests_by_payment_date()
+
         except KeyError:
             return HTTP_BAD_REQUEST
 
