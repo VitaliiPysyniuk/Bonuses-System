@@ -19,16 +19,19 @@ class BonusesQuery:
     @staticmethod
     def get_bonuses(bonus_id=None):
         with Session(engine) as session:
-            query = session.query(Bonus).order_by(Bonus.id)
+            try:
+                query = session.query(Bonus).order_by(Bonus.id)
 
-            if bonus_id is not None:
-                query = query.filter(Bonus.id == bonus_id)
-                query_result = query.first()
+                if bonus_id is not None:
+                    query = query.filter(Bonus.id == bonus_id)
+                    query_result = query.first()
 
-                return query_result
+                    return query_result
 
-            query_result = query.all()
-            query_result = [bonus.to_dict() for bonus in query_result]
+                query_result = query.all()
+                query_result = [bonus.to_dict() for bonus in query_result]
+            except Exception as e:
+                return None
 
         return query_result
 
@@ -51,7 +54,7 @@ class BonusesQuery:
                 session.commit()
                 session.flush()
                 updated_bonus = bonus_to_update.to_dict()
-            except db.exc.SQLAlchemyError as e:
+            except Exception as e:
                 session.rollback()
                 return 0
 
@@ -65,7 +68,7 @@ class BonusesQuery:
                 query.delete()
 
                 session.commit()
-            except db.exc.SQLAlchemyError as e:
+            except Exception as e:
                 session.rollback()
                 return 0
 
@@ -79,8 +82,9 @@ class BonusesQuery:
                 session.add(new_bonus)
                 session.flush()
 
+                session.commit()
                 created_bonus = new_bonus.to_dict()
-            except db.exc.SQLAlchemyError as e:
+            except Exception as e:
                 session.rollback()
                 return 0
 

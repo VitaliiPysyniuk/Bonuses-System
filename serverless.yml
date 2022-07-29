@@ -20,6 +20,9 @@ provider:
       lambda-bonuses-image:
         path: .
         file: bonuses-lambda.Dockerfile
+      lambda-requests-image:
+        path: .
+        file: requests-lambda.Dockerfile
 
 
 functions:
@@ -30,6 +33,10 @@ functions:
       - http:
           path: workers
           method: get
+          request:
+            parameters:
+              querystrings:
+                slack_id: false
       - http:
           path: workers/{id}
           method: get
@@ -75,6 +82,45 @@ functions:
       - http:
           path: bonuses/{id}
           method: delete
+          request:
+            parameters:
+              paths:
+                id: true
+
+  requests-lambda:
+    image:
+      name: lambda-requests-image
+    events:
+      - http:
+          path: requests
+          method: get
+      - http:
+          path: requests
+          method: post
+      - http:
+          path: requests/{id}
+          method: patch
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: requests/{id}
+          method: delete
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: requests/{id}/history
+          method: get
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: requests/{id}/history
+          method: post
           request:
             parameters:
               paths:

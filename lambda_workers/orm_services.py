@@ -15,21 +15,28 @@ engine = db.create_engine(
 
 class UsersQuery:
     @staticmethod
-    def get_users(user_id=None, slack_id=None):
+    def get_users(user_id=None, slack_id=None, role=None):
         with Session(engine) as session:
-            query = session.query(User, UsersRolesRelation.role_id, Roles.role_name)
+            try:
+                query = session.query(User, UsersRolesRelation.role_id, Roles.role_name)
 
-            if user_id is not None:
-                query = query.filter(User.id == user_id)
-            if slack_id is not None:
-                query = query.filter(User.slack_id == slack_id)
+                if user_id is not None:
+                    query = query.filter(User.id == user_id)
+                if slack_id is not None:
+                    query = query.filter(User.slack_id == slack_id)
 
-            query = query.join(UsersRolesRelation, User.id == UsersRolesRelation.user_id) \
-                .join(Roles, UsersRolesRelation.role_id == Roles.id)
+                query = query.join(UsersRolesRelation, User.id == UsersRolesRelation.user_id) \
+                    .join(Roles, UsersRolesRelation.role_id == Roles.id)
 
-            query_result = query.all()
+                if role:
+                    query = query.filter(Roles.role_name == role)
+                    print(query)
 
-        return UsersQuery._parsed_users(query_result)
+                query_result = query.all()
+            except Exception as e:
+                return None
+
+        return UsersQuery._parse_users(query_result)
 
     @staticmethod
     def get_user_by_id(user_id):
@@ -44,7 +51,7 @@ class UsersQuery:
         return user
 
     @staticmethod
-    def _parsed_users(users_data):
+    def _parse_users(users_data):
         parsed_result = {}
 
         for item in users_data:
@@ -89,7 +96,7 @@ class UsersQuery:
                 session.commit()
                 session.flush()
                 updated_user = user_to_update.to_dict()
-            except db.exc.SQLAlchemyError as e:
+            except Exception as e:
                 session.rollback()
                 return 0
 
@@ -103,7 +110,7 @@ class UsersQuery:
                 query.delete()
 
                 session.commit()
-            except db.exc.SQLAlchemyError as e:
+            except Exception as e:
                 session.rollback()
                 return 0
 
@@ -125,7 +132,7 @@ class UsersQuery:
 
                 session.commit()
                 created_user = new_user.to_dict()
-            except db.exc.SQLAlchemyError as e:
+            except Exception as e:
                 session.rollback()
                 return 0
 

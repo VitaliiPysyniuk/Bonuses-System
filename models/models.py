@@ -102,6 +102,19 @@ class Request(Base):
         self.status = status
         self.description = description
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'creator': self.creator,
+            'reviewer': self.reviewer,
+            'type_bonus': self.type_bonus,
+            'payment_amount': self.payment_amount,
+            'payment_date': str(self.payment_date),
+            'status': self.status,
+            'description': self.description,
+            'created_at': str(self.created_at)
+        }
+
 
 class RequestHistory(Base):
     __tablename__ = "requests_history"
@@ -118,3 +131,11 @@ class RequestHistory(Base):
         self.request_id = request_id
         self.changes = changes
         self.editor = editor
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'changes': self.changes,
+            'editor': self.editor,
+            'timestamp': str(self.timestamp)
+        }
