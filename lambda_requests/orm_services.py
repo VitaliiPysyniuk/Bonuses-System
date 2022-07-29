@@ -224,6 +224,28 @@ class RequestQuery:
 
             return RequestQuery._parse_requests(query_result)
 
+    @staticmethod
+    def get_requests_by_payment_date():
+        today = datetime.datetime.today()
+        current_date = today.strftime("%Y-%m-%d")
+
+        with Session(engine) as session:
+            creator = db.orm.aliased(User)
+            reviewer = db.orm.aliased(User)
+            query = session.query(Request.id, Request.payment_amount, Request.created_at,
+                                  Request.description, Bonus.type,
+                                  ColElem.label(creator.full_name, 'creator_name'),
+                                  ColElem.label(reviewer.slack_id, 'reviewer_slack_id'))
+            query = query.filter(Request.status == 'approved').filter(Request.payment_date == str(current_date))
+
+            query = query.join(creator, Request.creator == creator.id) \
+                .join(reviewer, Request.reviewer == reviewer.id) \
+                .join(Bonus, Request.type_bonus == Bonus.id)
+
+            query_result = query.all()
+
+        return RequestQuery._parse_requests(query_result)
+
 
 class RequestHistoryQuery:
     @staticmethod
