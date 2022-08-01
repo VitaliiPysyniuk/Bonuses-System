@@ -29,6 +29,24 @@ def get_bonuses():
     return response
 
 
+def get_bonus_by_id(bonus_id):
+    bonuses = BonusesQuery.get_bonus_by_id(bonus_id)
+
+    if bonuses:
+        response = {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
+            'body': json.dumps(bonuses)
+        }
+
+    else:
+        response = HTTP_BAD_REQUEST
+
+    return response
+
+
 def create_bonus(event):
     data = json.loads(event['body'])
 
@@ -98,7 +116,10 @@ def lambda_handler(event, context):
     elif event['resource'] == '/bonuses/{id}':
         bonus_id = event['pathParameters'].get('id')
 
-        if event['httpMethod'] == 'PATCH':
+        if event['httpMethod'] == 'GET':
+            result = get_bonus_by_id(bonus_id)
+
+        elif event['httpMethod'] == 'PATCH':
             result = update_bonus(bonus_id, event)
 
         elif event['httpMethod'] == 'DELETE':

@@ -1,6 +1,6 @@
 import json
 
-from orm_services import RequestQuery, RequestHistoryQuery
+from orm_services import RequestQuery, RequestHistoryQuery, RequestPayQuery
 
 HTTP_BAD_REQUEST = {
     'statusCode': 400,
@@ -48,13 +48,25 @@ def get_requests(event):
                 requests = RequestQuery.get_administrator_all_requests(query_name=query_params['query_name'])
 
             elif int(query_params['type']) == 6:
-                requests = RequestQuery.get_requests_by_payment_date()
+                requests = RequestPayQuery.get_requests_by_payment_date()
 
         except KeyError:
             return HTTP_BAD_REQUEST
 
-    if requests:
+    if requests or len(requests) == 0:
         response = http_ok(requests)
+
+    else:
+        response = HTTP_BAD_REQUEST
+
+    return response
+
+
+def get_request_by_id(id):
+    request = RequestQuery.get_requests(id)
+
+    if request:
+        response = http_ok(request)
 
     else:
         response = HTTP_BAD_REQUEST
@@ -160,7 +172,10 @@ def lambda_handler(event, context):
     elif event['resource'] == '/requests/{id}':
         request_id = event['pathParameters'].get('id')
 
-        if event['httpMethod'] == 'PATCH':
+        if event['httpMethod'] == 'GET':
+            result = get_request_by_id(request_id)
+
+        elif event['httpMethod'] == 'PATCH':
             result = update_request(request_id, event)
 
         elif event['httpMethod'] == 'DELETE':

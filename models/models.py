@@ -137,5 +137,6 @@ class RequestHistory(Base):
             'id': self.id,
             'changes': self.changes,
             'editor': self.editor,
-            'timestamp': str(self.timestamp)
+            'timestamp': str(self.timestamp),
+            'request_id': self.request_id
         }

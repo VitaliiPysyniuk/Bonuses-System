@@ -86,6 +86,13 @@ functions:
             parameters:
               paths:
                 id: true
+      - http:
+          path: bonuses/{id}
+          method: get
+          request:
+            parameters:
+              paths:
+                id: true
 
   requests-lambda:
     image:
@@ -100,6 +107,13 @@ functions:
       - http:
           path: requests/{id}
           method: patch
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: requests/{id}
+          method: get
           request:
             parameters:
               paths:

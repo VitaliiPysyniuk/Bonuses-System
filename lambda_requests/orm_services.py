@@ -224,27 +224,28 @@ class RequestQuery:
 
             return RequestQuery._parse_requests(query_result)
 
-    @staticmethod
-    def get_requests_by_payment_date():
-        today = datetime.datetime.today()
-        current_date = today.strftime("%Y-%m-%d")
-
-        with Session(engine) as session:
-            creator = db.orm.aliased(User)
-            reviewer = db.orm.aliased(User)
-            query = session.query(Request.id, Request.payment_amount, Request.created_at,
-                                  Request.description, Bonus.type,
-                                  ColElem.label(creator.full_name, 'creator_name'),
-                                  ColElem.label(reviewer.slack_id, 'reviewer_slack_id'))
-            query = query.filter(Request.status == 'approved').filter(Request.payment_date == str(current_date))
-
-            query = query.join(creator, Request.creator == creator.id) \
-                .join(reviewer, Request.reviewer == reviewer.id) \
-                .join(Bonus, Request.type_bonus == Bonus.id)
-
-            query_result = query.all()
-
-        return RequestQuery._parse_requests(query_result)
+    # @staticmethod
+    # def get_requests_by_payment_date():
+    #     today = datetime.datetime.today()
+    #     current_date = today.strftime("%Y-%m-%d")
+    #
+    #     with Session(engine) as session:
+    #         creator = db.orm.aliased(User)
+    #         reviewer = db.orm.aliased(User)
+    #         query = session.query(Request.id, Request.payment_amount, Request.created_at,
+    #                               Request.description, Bonus.type,
+    #                               ColElem.label(creator.full_name, 'creator_name'),
+    #                               ColElem.label(reviewer.slack_id, 'reviewer_slack_id'))
+    #         query = query.filter(Request.status == 'approved').filter(Request.payment_date == str(current_date))
+    #
+    #         query = query.join(creator, Request.creator == creator.id) \
+    #             .join(reviewer, Request.reviewer == reviewer.id) \
+    #             .join(Bonus, Request.type_bonus == Bonus.id)
+    #
+    #         query_result = query.all()
+    #         print(query_result)
+    #
+    #     return RequestQuery._parse_requests(query_result)
 
 
 class RequestHistoryQuery:
@@ -293,3 +294,45 @@ class RequestHistoryQuery:
         parsed_history = [item.to_dict() for item in history]
 
         return parsed_history
+
+
+class RequestPayQuery:
+    @staticmethod
+    def get_requests_by_payment_date():
+        today = datetime.datetime.today()
+        current_date = today.strftime("%Y-%m-%d")
+
+        with Session(engine) as session:
+            creator = db.orm.aliased(User)
+            reviewer = db.orm.aliased(User)
+            query = session.query(Request.id, Request.payment_amount, Request.created_at,
+                                  Request.description, Bonus.type,
+                                  ColElem.label(creator.full_name, 'creator_name'),
+                                  ColElem.label(reviewer.slack_id, 'reviewer_slack_id'))
+            query = query.filter(Request.status == 'approved').filter(Request.payment_date == str(current_date))
+
+            query = query.join(creator, Request.creator == creator.id) \
+                .join(reviewer, Request.reviewer == reviewer.id) \
+                .join(Bonus, Request.type_bonus == Bonus.id)
+
+            query_result = query.all()
+
+        return RequestPayQuery._parsed_requests(query_result)
+
+    @staticmethod
+    def _parsed_requests(requests):
+        parsed_result = dict()
+        new_requests = list()
+        for request in requests:
+            request = dict(request)
+            request['created_at'] = str(request['created_at'])
+            new_requests.append(request)
+
+        for request in new_requests:
+            slack_id = request.pop('reviewer_slack_id')
+            if slack_id not in parsed_result:
+                parsed_result[slack_id] = [request]
+            else:
+                parsed_result[slack_id].append(request)
+
+        return parsed_result
