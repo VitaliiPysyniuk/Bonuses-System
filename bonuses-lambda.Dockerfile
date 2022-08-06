@@ -1,7 +1,6 @@
 FROM amazon/aws-lambda-python:3.8
 
-COPY ./lambda_bonuses/lambda_function.py ${LAMBDA_TASK_ROOT}
-COPY ./lambda_bonuses/orm_services.py ${LAMBDA_TASK_ROOT}
+COPY ./lambda_bonuses/* ${LAMBDA_TASK_ROOT}
 COPY ./models/models.py ${LAMBDA_TASK_ROOT}
 
 COPY requirements.txt .

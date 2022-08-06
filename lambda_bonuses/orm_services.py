@@ -1,21 +1,14 @@
-import sqlalchemy as db
 from sqlalchemy.orm.session import Session
-import os
+from sqlalchemy.exc import SQLAlchemyError
 
-from models import Bonus
+# from models import Bonus
+from models.models import Bonus
+from utils.database import create_db_engine
 
-POSTGRES_USER = os.environ.get('POSTGRES_USER')
-POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
-POSTGRES_HOST = os.environ.get('POSTGRES_HOST')
-POSTGRES_PORT = os.environ.get('POSTGRES_PORT')
-POSTGRES_DB = os.environ.get('POSTGRES_DB')
-
-engine = db.create_engine(
-    f'postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}')
+engine = create_db_engine()
 
 
 class BonusesQuery:
-
     @staticmethod
     def get_bonuses(bonus_id=None):
         with Session(engine) as session:
@@ -24,23 +17,25 @@ class BonusesQuery:
 
                 if bonus_id is not None:
                     query = query.filter(Bonus.id == bonus_id)
-                    query_result = query.first()
-
-                    return query_result
 
                 query_result = query.all()
                 query_result = [bonus.to_dict() for bonus in query_result]
-            except Exception as e:
-                return None
+
+            except SQLAlchemyError as error:
+                print(error)
+                return 0
 
         return query_result
 
     @staticmethod
     def get_bonus_by_id(bonus_id):
-        bonus = BonusesQuery.get_bonuses(bonus_id)
-        bonus = bonus.to_dict()
+        query_result = BonusesQuery.get_bonuses(bonus_id=bonus_id)
 
-        return bonus
+        if query_result and len(query_result) == 1:
+            bonus = query_result[0]
+            return bonus
+
+        return 0
 
     @staticmethod
     def update_bonuses(bonus_id, data):
@@ -54,7 +49,9 @@ class BonusesQuery:
                 session.commit()
                 session.flush()
                 updated_bonus = bonus_to_update.to_dict()
-            except Exception as e:
+
+            except SQLAlchemyError as error:
+                print(error)
                 session.rollback()
                 return 0
 
@@ -65,14 +62,16 @@ class BonusesQuery:
         with Session(engine) as session:
             try:
                 query = session.query(Bonus).filter(Bonus.id == bonus_id)
-                query.delete()
+                query_result = query.delete()
 
                 session.commit()
-            except Exception as e:
+
+            except SQLAlchemyError as error:
+                print(error)
                 session.rollback()
                 return 0
 
-        return 1
+        return query_result
 
     @staticmethod
     def add_new_bonus(data):
@@ -84,7 +83,9 @@ class BonusesQuery:
 
                 session.commit()
                 created_bonus = new_bonus.to_dict()
-            except Exception as e:
+
+            except SQLAlchemyError as error:
+                print(error)
                 session.rollback()
                 return 0
 
