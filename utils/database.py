@@ -1,19 +1,23 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
-from dotenv import load_dotenv
+from sqlalchemy.orm.session import Session
 
-load_dotenv()
 
-POSTGRES_USER = os.environ.get('POSTGRES_USER')
-POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
-POSTGRES_HOST = os.environ.get('POSTGRES_HOST')
-POSTGRES_PORT = os.environ.get('POSTGRES_PORT')
-POSTGRES_DB = os.environ.get('POSTGRES_DB')
+def build_db_url():
+    pg_user = os.environ.get('POSTGRES_USER')
+    pg_password = os.environ.get('POSTGRES_PASSWORD')
+    pg_host = os.environ.get('POSTGRES_HOST')
+    pg_port = os.environ.get('POSTGRES_PORT')
+    pg_db = os.environ.get('POSTGRES_DB')
+
+    url = f'postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_db}'
+
+    return url
 
 
 def create_db_engine():
-    db_url = f'postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
+    db_url = build_db_url()
     engine = create_engine(db_url, pool_pre_ping=True)
 
     try:
@@ -23,4 +27,11 @@ def create_db_engine():
         return None
 
     return engine
+
+
+def open_db_session():
+    engine = create_db_engine()
+    session = Session(engine)
+
+    return session
 
