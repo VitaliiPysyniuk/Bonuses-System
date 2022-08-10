@@ -33,7 +33,7 @@ class Role(Base):
     __tablename__ = "roles"
 
     id = Column(Integer, primary_key=True)
-    role_name = Column(String(20), nullable=False)
+    role_name = Column(String(20), nullable=False, unique=True)
 
     roles_workers_rel = relationship("WorkersRolesRelation", back_populates='role_rel')
 
@@ -61,7 +61,7 @@ class Bonus(Base):
     __tablename__ = "bonuses_types"
 
     id = Column(Integer, primary_key=True)
-    type = Column(String(20), nullable=False)
+    type = Column(String(20), nullable=False, unique=True)
     description = Column(String(100))
 
     requests_rel = relationship("Request", back_populates="bonus_type_rel")
