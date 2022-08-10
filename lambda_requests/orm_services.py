@@ -1,55 +1,81 @@
-import datetime
-import sqlalchemy as db
-from sqlalchemy import or_, and_
-from sqlalchemy.orm.session import Session
+from sqlalchemy.orm import aliased
 from sqlalchemy.sql.expression import ColumnElement as ColElem
-import os
+from sqlalchemy.exc import SQLAlchemyError
 
-from models import RequestHistory, Request, User, Bonus
-
-POSTGRES_USER = os.environ.get('POSTGRES_USER')
-POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
-POSTGRES_HOST = os.environ.get('POSTGRES_HOST')
-POSTGRES_PORT = os.environ.get('POSTGRES_PORT')
-POSTGRES_DB = os.environ.get('POSTGRES_DB')
-
-engine = db.create_engine(
-    f'postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}')
+from models.models import RequestHistory, Request, Worker, Bonus
+from utils.database import open_db_session
 
 
 class RequestQuery:
     @staticmethod
-    def get_requests(request_id=None):
-        with Session(engine) as session:
-            creator = db.orm.aliased(User)
-            reviewer = db.orm.aliased(User)
-            query = session.query(Request, ColElem.label(Bonus.type, 'bonus_name'),
-                                  ColElem.label(creator.full_name, 'creator_name'),
-                                  ColElem.label(creator.slack_id, 'creator_slack_id'),
-                                  ColElem.label(reviewer.full_name, 'reviewer_name'),
-                                  ColElem.label(reviewer.slack_id, 'reviewer_slack_id')).order_by(Request.id)
-            if request_id is not None:
-                query = query.filter(Request.id == request_id)
+    def get_requests(request_id=None, status=None, creator_id=None, reviewer_id=None, payment_date=None,
+                     payment_date_gt=None, payment_date_lt=None):
 
-            query_result = query.join(Bonus, Request.type_bonus == Bonus.id) \
-                .join(creator, Request.creator == creator.id) \
-                .join(reviewer, Request.reviewer == reviewer.id).all()
+        with open_db_session() as session:
+            try:
+                creator = aliased(Worker)
+                reviewer = aliased(Worker)
+                query = session.query(Request,
+                                      ColElem.label(Bonus.type, 'bonus_name'),
+                                      ColElem.label(creator.full_name, 'creator_name'),
+                                      ColElem.label(creator.slack_id, 'creator_slack_id'),
+                                      ColElem.label(reviewer.full_name, 'reviewer_name'),
+                                      ColElem.label(reviewer.slack_id, 'reviewer_slack_id')).order_by(Request.id)
+
+                if request_id is not None:
+                    query = query.filter(Request.id == request_id)
+                if status is not None:
+                    query = query.filter(Request.status == status)
+                else:
+                    query = query.filter(Request.status != 'deleted')
+
+                if creator_id is not None:
+                    query = query.filter(Request.creator == creator_id)
+                if reviewer_id is not None:
+                    query = query.filter(Request.reviewer == reviewer_id)
+                if payment_date is not None:
+                    query = query.filter(Request.payment_date == payment_date)
+                if payment_date_gt is not None and payment_date_gt:
+                    query = query.filter(Request.payment_date > payment_date_gt)
+                if payment_date_lt is not None and payment_date_lt:
+                    query = query.filter(Request.payment_date <= payment_date_lt)
+
+                query_result = query.join(Bonus, Request.bonus_type == Bonus.id) \
+                    .join(creator, Request.creator == creator.id) \
+                    .join(reviewer, Request.reviewer == reviewer.id).all()
+
+            except SQLAlchemyError as error:
+                print(error)
+                return 0
 
         return RequestQuery._parse_requests(query_result)
 
     @staticmethod
+    def get_request_by_id(request_id):
+        query_result = RequestQuery.get_requests(request_id=request_id)
+
+        if query_result and len(query_result) == 1:
+            request = query_result[0]
+            return request
+
+        return 0
+
+    @staticmethod
     def update_request(request_id, data):
-        with Session(engine) as session:
+        with open_db_session() as session:
             try:
                 request_to_update = session.query(Request).filter(Request.id == request_id).first()
 
                 for key, value in data.items():
+                    print(key, value)
                     request_to_update.__setattr__(key, value)
 
                 session.commit()
                 session.flush()
                 updated_request = request_to_update.to_dict()
-            except db.exc.SQLAlchemyError as e:
+
+            except SQLAlchemyError as error:
+                print(error)
                 session.rollback()
                 return 0
 
@@ -57,13 +83,24 @@ class RequestQuery:
 
     @staticmethod
     def delete_request(request_id):
-        with Session(engine) as session:
+        with open_db_session() as session:
             try:
                 query = session.query(Request).filter(Request.id == request_id)
+
+                request_to_delete = query.first()
+                if not request_to_delete:
+                    return 0
+
+                request_to_delete = request_to_delete.to_dict()
+                if request_to_delete['status'] == 'deleted':
+                    return 0
+
                 query_result = query.update({'status': 'deleted'})
 
                 session.commit()
-            except db.exc.SQLAlchemyError as e:
+
+            except SQLAlchemyError as error:
+                print(error)
                 session.rollback()
                 return 0
 
@@ -71,7 +108,7 @@ class RequestQuery:
 
     @staticmethod
     def add_new_request(data):
-        with Session(engine) as session:
+        with open_db_session() as session:
             try:
                 new_request = Request(**data)
                 session.add(new_request)
@@ -79,7 +116,9 @@ class RequestQuery:
 
                 session.commit()
                 created_request = new_request.to_dict()
-            except db.exc.SQLAlchemyError as e:
+
+            except SQLAlchemyError as error:
+                print(error)
                 session.rollback()
                 return 0
 
@@ -100,158 +139,11 @@ class RequestQuery:
 
         return parsed_requests
 
-    @staticmethod
-    def get_filtered_requests(status, reviewer_id):
-        with Session(engine) as session:
-            creator = db.orm.aliased(User)
-            reviewer = db.orm.aliased(User)
-            query = session.query(Request, ColElem.label(Bonus.type, 'bonus_name'),
-                                  ColElem.label(creator.full_name, 'creator_name'),
-                                  ColElem.label(creator.slack_id, 'creator_slack_id'),
-                                  ColElem.label(reviewer.full_name, 'reviewer_name'),
-                                  ColElem.label(reviewer.slack_id, 'reviewer_slack_id')).order_by(Request.id)
-
-            query = query.filter(Request.status == status)
-            query = query.filter(Request.reviewer == reviewer_id)
-
-            query_result = query.join(Bonus, Request.type_bonus == Bonus.id) \
-                .join(creator, Request.creator == creator.id) \
-                .join(reviewer, Request.reviewer == reviewer.id).all()
-
-        return RequestQuery._parse_requests(query_result)
-
-    @staticmethod
-    def get_worker_pending_unpaid_requests(creator_id):
-        with Session(engine) as session:
-            creator = db.orm.aliased(User)
-            reviewer = db.orm.aliased(User)
-            query = session.query(Request, ColElem.label(Bonus.type, 'bonus_name'),
-                                  ColElem.label(creator.full_name, 'creator_name'),
-                                  ColElem.label(creator.slack_id, 'creator_slack_id'),
-                                  ColElem.label(reviewer.full_name, 'reviewer_name'),
-                                  ColElem.label(reviewer.slack_id, 'reviewer_slack_id')).order_by(Request.id)
-
-            today = datetime.datetime.today()
-            today = f'{today.year}-{today.month}-{today.day}'
-
-            query = query.filter(
-                or_(Request.status == 'created', and_(Request.status == 'approved', Request.payment_date >= today)))
-            query = query.filter(Request.creator == creator_id)
-
-            query_result = query.join(Bonus, Request.type_bonus == Bonus.id) \
-                .join(creator, Request.creator == creator.id) \
-                .join(reviewer, Request.reviewer == reviewer.id).all()
-
-            return RequestQuery._parse_requests(query_result)
-
-    @staticmethod
-    def get_worker_approved_denied_requests(creator_id):
-        with Session(engine) as session:
-            creator = db.orm.aliased(User)
-            reviewer = db.orm.aliased(User)
-            query = session.query(Request, ColElem.label(Bonus.type, 'bonus_name'),
-                                  ColElem.label(creator.full_name, 'creator_name'),
-                                  ColElem.label(creator.slack_id, 'creator_slack_id'),
-                                  ColElem.label(reviewer.full_name, 'reviewer_name'),
-                                  ColElem.label(reviewer.slack_id, 'reviewer_slack_id')).order_by(Request.id)
-
-            today = datetime.datetime.today()
-            today = f'{today.year}-{today.month}-{today.day}'
-
-            query = query.filter(
-                or_(Request.status == 'denied', and_(Request.status == 'approved', Request.payment_date < today)))
-            query = query.filter(Request.creator == creator_id)
-
-            query_result = query.join(Bonus, Request.type_bonus == Bonus.id) \
-                .join(creator, Request.creator == creator.id) \
-                .join(reviewer, Request.reviewer == reviewer.id).all()
-
-            return RequestQuery._parse_requests(query_result)
-
-    @staticmethod
-    def get_worker_deleted_requests(creator_id):
-        with Session(engine) as session:
-            creator = db.orm.aliased(User)
-            reviewer = db.orm.aliased(User)
-            query = session.query(Request, ColElem.label(Bonus.type, 'bonus_name'),
-                                  ColElem.label(creator.full_name, 'creator_name'),
-                                  ColElem.label(creator.slack_id, 'creator_slack_id'),
-                                  ColElem.label(reviewer.full_name, 'reviewer_name'),
-                                  ColElem.label(reviewer.slack_id, 'reviewer_slack_id')).order_by(Request.id)
-
-            query = query.filter(Request.status == 'deleted')
-            query = query.filter(Request.creator == creator_id)
-
-            query_result = query.join(Bonus, Request.type_bonus == Bonus.id) \
-                .join(creator, Request.creator == creator.id) \
-                .join(reviewer, Request.reviewer == reviewer.id).all()
-
-            return RequestQuery._parse_requests(query_result)
-
-    @staticmethod
-    def get_administrator_all_requests(query_name):
-        with Session(engine) as session:
-            creator = db.orm.aliased(User)
-            reviewer = db.orm.aliased(User)
-            query = session.query(Request, ColElem.label(Bonus.type, 'bonus_name'),
-                                  ColElem.label(creator.full_name, 'creator_name'),
-                                  ColElem.label(creator.slack_id, 'creator_slack_id'),
-                                  ColElem.label(reviewer.full_name, 'reviewer_name'),
-                                  ColElem.label(reviewer.slack_id, 'reviewer_slack_id')).order_by(Request.id)
-
-            if query_name == 'pending':
-                query = query.filter(Request.status == 'created')
-            elif query_name == 'unpaid':
-                today = datetime.datetime.today()
-                today = f'{today.year}-{today.month}-{today.day}'
-
-                query = query.filter(and_(Request.status == 'approved',
-                                          Request.payment_date >= today))
-            elif query_name == 'paid':
-                today = datetime.datetime.today()
-                today = f'{today.year}-{today.month}-{today.day}'
-
-                query = query.filter(and_(Request.status == 'approved',
-                                          Request.payment_date < today))
-            elif query_name == 'denied':
-                query = query.filter(Request.status == 'denied')
-            elif query_name == 'deleted':
-                query = query.filter(Request.status == 'deleted')
-
-            query_result = query.join(Bonus, Request.type_bonus == Bonus.id) \
-                .join(creator, Request.creator == creator.id) \
-                .join(reviewer, Request.reviewer == reviewer.id).all()
-
-            return RequestQuery._parse_requests(query_result)
-
-    # @staticmethod
-    # def get_requests_by_payment_date():
-    #     today = datetime.datetime.today()
-    #     current_date = today.strftime("%Y-%m-%d")
-    #
-    #     with Session(engine) as session:
-    #         creator = db.orm.aliased(User)
-    #         reviewer = db.orm.aliased(User)
-    #         query = session.query(Request.id, Request.payment_amount, Request.created_at,
-    #                               Request.description, Bonus.type,
-    #                               ColElem.label(creator.full_name, 'creator_name'),
-    #                               ColElem.label(reviewer.slack_id, 'reviewer_slack_id'))
-    #         query = query.filter(Request.status == 'approved').filter(Request.payment_date == str(current_date))
-    #
-    #         query = query.join(creator, Request.creator == creator.id) \
-    #             .join(reviewer, Request.reviewer == reviewer.id) \
-    #             .join(Bonus, Request.type_bonus == Bonus.id)
-    #
-    #         query_result = query.all()
-    #         print(query_result)
-    #
-    #     return RequestQuery._parse_requests(query_result)
-
 
 class RequestHistoryQuery:
     @staticmethod
-    def get_request_history(request_id):
-        with Session(engine) as session:
+    def get_history(request_id):
+        with open_db_session() as session:
             query = session.query(RequestHistory).filter(RequestHistory.request_id == request_id)
 
             query_result = query.all()
@@ -259,31 +151,18 @@ class RequestHistoryQuery:
         return RequestHistoryQuery._parse_history(query_result)
 
     @staticmethod
-    # def add_history(data, request_id, editor, old_request=None):
     def add_history(data):
-        with Session(engine) as session:
+        with open_db_session() as session:
             try:
-                # if old_request is not None:
-                #     request = dict(old_request)
-                # else:
-                #     request = dict()
-                #
-                # changes_log = ''
-                # for key in data.keys():
-                #     if str(data[key]) != str(request.get(key, "-")):
-                #         if key == 'reviewer' or key == 'type_bonus' or key == 'creator':
-                #             continue
-                #
-                #         log = f'{" ".join(key.split("_")).capitalize()}:  {request.get(key, "-")}  ->  {data[key]}\n'
-                #         changes_log += log
-
                 new_history = RequestHistory(**data)
                 session.add(new_history)
                 session.flush()
 
                 session.commit()
                 created_history = new_history.to_dict()
-            except db.exc.SQLAlchemyError as e:
+
+            except SQLAlchemyError as error:
+                print(error)
                 session.rollback()
                 return 0
 
@@ -294,45 +173,3 @@ class RequestHistoryQuery:
         parsed_history = [item.to_dict() for item in history]
 
         return parsed_history
-
-
-class RequestPayQuery:
-    @staticmethod
-    def get_requests_by_payment_date():
-        today = datetime.datetime.today()
-        current_date = today.strftime("%Y-%m-%d")
-
-        with Session(engine) as session:
-            creator = db.orm.aliased(User)
-            reviewer = db.orm.aliased(User)
-            query = session.query(Request.id, Request.payment_amount, Request.created_at,
-                                  Request.description, Bonus.type,
-                                  ColElem.label(creator.full_name, 'creator_name'),
-                                  ColElem.label(reviewer.slack_id, 'reviewer_slack_id'))
-            query = query.filter(Request.status == 'approved').filter(Request.payment_date == str(current_date))
-
-            query = query.join(creator, Request.creator == creator.id) \
-                .join(reviewer, Request.reviewer == reviewer.id) \
-                .join(Bonus, Request.type_bonus == Bonus.id)
-
-            query_result = query.all()
-
-        return RequestPayQuery._parsed_requests(query_result)
-
-    @staticmethod
-    def _parsed_requests(requests):
-        parsed_result = dict()
-        new_requests = list()
-        for request in requests:
-            request = dict(request)
-            request['created_at'] = str(request['created_at'])
-            new_requests.append(request)
-
-        for request in new_requests:
-            slack_id = request.pop('reviewer_slack_id')
-            if slack_id not in parsed_result:
-                parsed_result[slack_id] = [request]
-            else:
-                parsed_result[slack_id].append(request)
-
-        return parsed_result
