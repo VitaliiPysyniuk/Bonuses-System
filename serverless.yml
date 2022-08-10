@@ -1,0 +1,152 @@
+service: test
+useDotenv: true
+
+provider:
+  name: aws
+  profile: default
+  stage: test
+  region: ${env:REGION}
+  environment:
+    POSTGRES_USER: ${env:POSTGRES_USER}
+    POSTGRES_PASSWORD: ${env:POSTGRES_PASSWORD}
+    POSTGRES_HOST: ${env:POSTGRES_HOST}
+    POSTGRES_PORT: ${env:POSTGRES_PORT}
+    POSTGRES_DB: ${env:POSTGRES_DB}
+  ecr:
+    images:
+      lambda-workers-image:
+        path: .
+        file: workers-lambda.Dockerfile
+      lambda-bonuses-image:
+        path: .
+        file: bonuses-lambda.Dockerfile
+      lambda-requests-image:
+        path: .
+        file: requests-lambda.Dockerfile
+
+
+functions:
+  workers-lambda:
+    image:
+      name: lambda-workers-image
+    events:
+      - http:
+          path: workers
+          method: get
+          request:
+            parameters:
+              querystrings:
+                slack_id: false
+                role: false
+      - http:
+          path: workers/{id}
+          method: get
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: workers
+          method: post
+      - http:
+          path: workers/{id}
+          method: patch
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: workers/{id}
+          method: delete
+          request:
+            parameters:
+              paths:
+                id: true
+
+  bonuses-lambda:
+    image:
+      name: lambda-bonuses-image
+    events:
+      - http:
+          path: bonuses
+          method: get
+      - http:
+          path: bonuses
+          method: post
+      - http:
+          path: bonuses/{id}
+          method: patch
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: bonuses/{id}
+          method: delete
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: bonuses/{id}
+          method: get
+          request:
+            parameters:
+              paths:
+                id: true
+
+  requests-lambda:
+    image:
+      name: lambda-requests-image
+    events:
+      - http:
+          path: requests
+          method: get
+          request:
+            parameters:
+              querystrings:
+                status: false
+                creator: false
+                reviewer: false
+                payment_date: false
+                payment_date_gt: false
+                payment_date_lt: false
+      - http:
+          path: requests
+          method: post
+      - http:
+          path: requests/{id}
+          method: patch
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: requests/{id}
+          method: get
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: requests/{id}
+          method: delete
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: requests/{id}/history
+          method: get
+          request:
+            parameters:
+              paths:
+                id: true
+      - http:
+          path: requests/{id}/history
+          method: post
+          request:
+            parameters:
+              paths:
+                id: true
+
