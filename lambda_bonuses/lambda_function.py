@@ -1,29 +1,23 @@
-from orm_services import BonusesQuery
+from .orm_services import BonusesQuery
 from utils.http import *
 
 
 def get_bonuses():
     bonuses = BonusesQuery.get_bonuses()
 
-    if bonuses:
-        response = http_ok(bonuses)
+    if type(bonuses) is list:
+        return http_ok(bonuses)
 
-    else:
-        response = HTTP_BAD_REQUEST
-
-    return response
+    return HTTP_BAD_REQUEST
 
 
 def get_bonus_by_id(bonus_id):
     bonus = BonusesQuery.get_bonus_by_id(bonus_id)
 
     if bonus:
-        response = http_ok(bonus)
+        return http_ok(bonus)
 
-    else:
-        response = HTTP_BAD_REQUEST
-
-    return response
+    return HTTP_BAD_REQUEST
 
 
 def create_bonus(event):
@@ -32,38 +26,29 @@ def create_bonus(event):
     created_bonus = BonusesQuery.add_new_bonus(data)
 
     if created_bonus:
-        response = http_created(created_bonus)
+        return http_created(created_bonus)
 
-    else:
-        response = HTTP_BAD_REQUEST
-
-    return response
+    return HTTP_BAD_REQUEST
 
 
 def update_bonus(id, event):
     data = json.loads(event['body'])
 
-    updated_bonus = BonusesQuery.update_bonuses(id, data)
+    updated_bonus = BonusesQuery.update_bonus(id, data)
 
     if updated_bonus:
-        response = http_ok(updated_bonus)
+        return http_ok(updated_bonus)
 
-    else:
-        response = HTTP_BAD_REQUEST
-
-    return response
+    return HTTP_BAD_REQUEST
 
 
 def delete_bonus(id):
-    deleted = BonusesQuery.delete_bonuses(id)
+    deleted = BonusesQuery.delete_bonus(id)
 
     if deleted:
-        response = HTTP_NO_CONTENT
+        return HTTP_NO_CONTENT
 
-    else:
-        response = HTTP_BAD_REQUEST
-
-    return response
+    return HTTP_BAD_REQUEST
 
 
 def lambda_handler(event, context):

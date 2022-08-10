@@ -1,17 +1,13 @@
-from sqlalchemy.orm.session import Session
 from sqlalchemy.exc import SQLAlchemyError
 
-# from models import Bonus
 from models.models import Bonus
-from utils.database import create_db_engine
-
-engine = create_db_engine()
+from utils.database import open_db_session
 
 
 class BonusesQuery:
     @staticmethod
     def get_bonuses(bonus_id=None):
-        with Session(engine) as session:
+        with open_db_session() as session:
             try:
                 query = session.query(Bonus).order_by(Bonus.id)
 
@@ -38,10 +34,13 @@ class BonusesQuery:
         return 0
 
     @staticmethod
-    def update_bonuses(bonus_id, data):
-        with Session(engine) as session:
+    def update_bonus(bonus_id, data):
+        with open_db_session() as session:
             try:
                 bonus_to_update = session.query(Bonus).filter(Bonus.id == bonus_id).first()
+
+                if not bonus_to_update:
+                    return 0
 
                 for key, value in data.items():
                     bonus_to_update.__setattr__(key, value)
@@ -58,8 +57,8 @@ class BonusesQuery:
         return updated_bonus
 
     @staticmethod
-    def delete_bonuses(bonus_id):
-        with Session(engine) as session:
+    def delete_bonus(bonus_id):
+        with open_db_session() as session:
             try:
                 query = session.query(Bonus).filter(Bonus.id == bonus_id)
                 query_result = query.delete()
@@ -75,7 +74,7 @@ class BonusesQuery:
 
     @staticmethod
     def add_new_bonus(data):
-        with Session(engine) as session:
+        with open_db_session() as session:
             try:
                 new_bonus = Bonus(**data)
                 session.add(new_bonus)
