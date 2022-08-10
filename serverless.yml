@@ -37,6 +37,7 @@ functions:
             parameters:
               querystrings:
                 slack_id: false
+                role: false
       - http:
           path: workers/{id}
           method: get
@@ -101,6 +102,15 @@ functions:
       - http:
           path: requests
           method: get
+          request:
+            parameters:
+              querystrings:
+                status: false
+                creator: false
+                reviewer: false
+                payment_date: false
+                payment_date_gt: false
+                payment_date_lt: false
       - http:
           path: requests
           method: post
@@ -139,3 +149,4 @@ functions:
             parameters:
               paths:
                 id: true
+
