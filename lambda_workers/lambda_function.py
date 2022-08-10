@@ -1,4 +1,4 @@
-from orm_services import WorkersQuery
+from .orm_services import WorkersQuery
 from utils.http import *
 
 
@@ -11,16 +11,16 @@ def get_workers(event):
         if worker:
             return http_ok(worker)
 
-    if query_params and 'role' in query_params:
+    elif query_params and 'role' in query_params:
         role = query_params.get('role')
-        worker = WorkersQuery.get_workers(role=role)
+        workers = WorkersQuery.get_workers(role=role)
 
-        if worker:
-            return http_ok(worker)
+        if type(workers) is list:
+            return http_ok(workers)
 
     else:
         workers = WorkersQuery.get_workers()
-        if workers:
+        if type(workers) is list:
             return http_ok(workers)
 
     return HTTP_BAD_REQUEST
@@ -30,12 +30,9 @@ def get_worker_by_id(id):
     worker = WorkersQuery.get_worker_by_id(id)
 
     if worker:
-        response = http_ok(worker)
+        return http_ok(worker)
 
-    else:
-        response = HTTP_BAD_REQUEST
-
-    return response
+    return HTTP_BAD_REQUEST
 
 
 def create_worker(event):
@@ -44,12 +41,9 @@ def create_worker(event):
     created_worker = WorkersQuery.add_new_worker(data)
 
     if created_worker:
-        response = http_created(created_worker)
+        return http_created(created_worker)
 
-    else:
-        response = HTTP_BAD_REQUEST
-
-    return response
+    return HTTP_BAD_REQUEST
 
 
 def update_worker(id, event):
@@ -58,24 +52,18 @@ def update_worker(id, event):
     updated_worker = WorkersQuery.update_worker(id, data)
 
     if updated_worker:
-        response = http_ok(updated_worker)
+        return http_ok(updated_worker)
 
-    else:
-        response = HTTP_BAD_REQUEST
-
-    return response
+    return HTTP_BAD_REQUEST
 
 
 def delete_worker(id):
     deleted = WorkersQuery.delete_worker(id)
 
     if deleted:
-        response = HTTP_NO_CONTENT
+        return HTTP_NO_CONTENT
 
-    else:
-        response = HTTP_BAD_REQUEST
-
-    return response
+    return HTTP_BAD_REQUEST
 
 
 def lambda_handler(event, context):

@@ -1,16 +1,13 @@
-from sqlalchemy.orm.session import Session
 from sqlalchemy.exc import SQLAlchemyError
 
-from models import Worker, WorkersRolesRelation, Role
-from utils.database import create_db_engine
-
-engine = create_db_engine()
+from models.models import Worker, WorkersRolesRelation, Role
+from utils.database import open_db_session
 
 
 class WorkersQuery:
     @staticmethod
     def get_workers(worker_id=None, slack_id=None, role=None):
-        with Session(engine) as session:
+        with open_db_session() as session:
             try:
                 query = session.query(Worker, WorkersRolesRelation.role_id, Role.role_name)
 
@@ -72,9 +69,12 @@ class WorkersQuery:
 
     @staticmethod
     def update_worker(worker_id, data):
-        with Session(engine) as session:
+        with open_db_session() as session:
             try:
                 worker = WorkersQuery.get_worker_by_id(worker_id)
+                if not worker:
+                    return 0
+
                 roles_data = data.pop('roles', None)
 
                 if roles_data is not None and roles_data != worker['roles']:
@@ -99,7 +99,7 @@ class WorkersQuery:
 
                 session.commit()
                 session.flush()
-                updated_worker = worker_to_update.to_dict()
+                updated_worker = WorkersQuery.get_worker_by_id(worker_id)
 
             except SQLAlchemyError as error:
                 print(error)
@@ -110,7 +110,7 @@ class WorkersQuery:
 
     @staticmethod
     def delete_worker(worker_id):
-        with Session(engine) as session:
+        with open_db_session() as session:
             try:
                 query = session.query(Worker).filter(Worker.id == worker_id)
                 query_result = query.delete()
@@ -126,7 +126,7 @@ class WorkersQuery:
 
     @staticmethod
     def add_new_worker(data):
-        with Session(engine) as session:
+        with open_db_session() as session:
             try:
                 roles_data = data.pop('roles', None)
 
@@ -137,6 +137,9 @@ class WorkersQuery:
                 if roles_data is not None:
                     new_roles = [WorkersRolesRelation(new_worker.id, role) for role in roles_data]
                     session.add_all(new_roles)
+                else:
+                    new_role = WorkersRolesRelation(new_worker.id, 1)
+                    session.add(new_role)
 
                 session.commit()
                 created_worker = new_worker.to_dict()
