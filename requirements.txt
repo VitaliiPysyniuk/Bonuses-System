@@ -16,4 +16,5 @@ pytest-cov==3.0.0
 pytest-mock==3.8.2
 python-dotenv==0.20.0
 SQLAlchemy==1.4.39
+SQLAlchemy-Utils==0.38.3
 tomli==2.0.1

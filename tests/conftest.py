@@ -2,6 +2,7 @@ import os
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy_utils import database_exists, create_database
 from dotenv import load_dotenv
 
 from models.models import Base
@@ -25,6 +26,8 @@ def build_test_db_url():
 def engine():
     test_db_url = build_test_db_url()
     engine = sa.create_engine(test_db_url)
+    if not database_exists(engine.url):
+        create_database(engine.url)
 
     return engine
 

@@ -17,7 +17,7 @@ def test_build_db_url():
 
 
 def test_create_db_engine_with_wrong_db_url(mocker):
-    mocker.patch('utils.database.build_db_url', return_value='postgresql://pg_user:pg_password@pg_host:0000/pg_db')
+    mocker.patch('utils.database.build_db_url', return_value='postgresql://pg_user:pg_password@127.0.0.1:5433/pg_db')
 
     result = create_db_engine()
 
