@@ -144,3 +144,4 @@ cython_debug/
 models/models-venv
 
 utils/file_to_delete.py
+node_modules
