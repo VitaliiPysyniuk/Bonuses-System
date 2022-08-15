@@ -1,7 +1,4 @@
 import pytest
-import os
-from unittest import mock
-# from dotenv import load_dotenv
 import json
 from copy import deepcopy
 
@@ -10,21 +7,6 @@ from ..unit.test_bonuses_lambda_function import bonuses_event
 from lambda_bonuses.lambda_function import lambda_handler
 
 test_bonuses_data_with_id = list(map(lambda item: {'id': item[0] + 1, **item[1]}, enumerate(test_bonuses_data)))
-
-# load_dotenv('.env.test')
-
-TEST_ENV_VARIABLES = {
-    'POSTGRES_USER': os.environ.get('POSTGRES_USER'),
-    'POSTGRES_PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
-    'POSTGRES_HOST': os.environ.get('POSTGRES_HOST'),
-    'POSTGRES_PORT': os.environ.get('POSTGRES_PORT'),
-    'POSTGRES_DB': os.environ.get('POSTGRES_DB')
-}
-
-
-@pytest.fixture(scope='module')
-def mock_settings_env_vars(clear_db):
-    mock.patch.dict(os.environ, TEST_ENV_VARIABLES)
 
 
 @pytest.mark.parametrize('bonuses_event', (('/bonuse', 'GET', {}),), indirect=True)
@@ -36,6 +18,7 @@ def test_lambda_handler_with_wrong_endpoint(bonuses_event):
 
 
 @pytest.mark.parametrize('bonus', deepcopy(test_bonuses_data_with_id))
+# @pytest.mark.parametrize('bonus', [deepcopy(test_bonuses_data_with_id)[0]])
 @pytest.mark.parametrize('bonuses_event', (('/bonuses', 'POST', {}),), indirect=True)
 def test_lambda_handler_post_request(bonus, bonuses_event):
     expected_id = bonus.pop('id')

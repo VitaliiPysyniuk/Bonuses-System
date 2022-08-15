@@ -3,13 +3,13 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy_utils import database_exists, create_database
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 
 from models.models import Base
 
 
 def build_test_db_url():
-    # load_dotenv('.env.test')
+    load_dotenv('.env.test')
 
     pg_user = os.environ.get('POSTGRES_USER')
     pg_password = os.environ.get('POSTGRES_PASSWORD')
@@ -41,11 +41,14 @@ def connection(engine):
     connection.close()
 
 
-@pytest.fixture()
+@pytest.fixture(scope='module', autouse=True)
 def clear_db(connection, engine):
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
+
+@pytest.fixture()
+def restart_sequences(clear_db, connection):
     connection.execute('ALTER SEQUENCE bonuses_types_id_seq RESTART WITH 1')
     connection.execute('ALTER SEQUENCE workers_id_seq RESTART WITH 1')
     connection.execute('ALTER SEQUENCE roles_id_seq RESTART WITH 1')
@@ -55,7 +58,7 @@ def clear_db(connection, engine):
 
 
 @pytest.fixture()
-def session(connection, clear_db, engine):
+def session(connection, restart_sequences, engine):
     transaction = connection.begin()
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = TestingSessionLocal(bind=connection)
@@ -72,4 +75,3 @@ def session(connection, clear_db, engine):
 
     session.close()
     transaction.rollback()
-
