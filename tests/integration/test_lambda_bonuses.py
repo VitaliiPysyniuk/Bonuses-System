@@ -1,7 +1,7 @@
 import pytest
 import os
 from unittest import mock
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 import json
 from copy import deepcopy
 
@@ -11,7 +11,7 @@ from lambda_bonuses.lambda_function import lambda_handler
 
 test_bonuses_data_with_id = list(map(lambda item: {'id': item[0] + 1, **item[1]}, enumerate(test_bonuses_data)))
 
-load_dotenv('.env.test')
+# load_dotenv('.env.test')
 
 TEST_ENV_VARIABLES = {
     'POSTGRES_USER': os.environ.get('POSTGRES_USER'),

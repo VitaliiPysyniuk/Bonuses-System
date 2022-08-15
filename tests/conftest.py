@@ -3,13 +3,13 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy_utils import database_exists, create_database
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
 from models.models import Base
 
 
 def build_test_db_url():
-    load_dotenv('.env.test')
+    # load_dotenv('.env.test')
 
     pg_user = os.environ.get('POSTGRES_USER')
     pg_password = os.environ.get('POSTGRES_PASSWORD')
