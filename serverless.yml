@@ -1,11 +1,10 @@
-service: test
+service: bonuses-system
 useDotenv: true
 
 provider:
   name: aws
-  profile: default
   stage: test
-  region: ${env:REGION}
+  region: us-east-1
   environment:
     POSTGRES_USER: ${env:POSTGRES_USER}
     POSTGRES_PASSWORD: ${env:POSTGRES_PASSWORD}
