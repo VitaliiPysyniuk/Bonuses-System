@@ -2,6 +2,7 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.session import Session
+from sqlalchemy_utils import database_exists, create_database
 
 
 def build_db_url():
@@ -18,10 +19,13 @@ def build_db_url():
 
 def create_db_engine():
     db_url = build_db_url()
-    engine = create_engine(db_url, pool_pre_ping=True)
+    engine = create_engine(db_url)
 
     try:
-        engine.connect()
+        if not database_exists(engine.url):
+            create_database(engine.url)
+        else:
+            engine.connect()
     except OperationalError:
         print(f'Connection failed: {db_url}')
         return None
